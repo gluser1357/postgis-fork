@@ -73,6 +73,7 @@ SQLPP = @SQLPP@
 PG_OBJS= \
 	postgis_module.o \
 	lwgeom_accum.o \
+	lwgeom_accum.o \
 	lwgeom_union.o \
 	lwgeom_spheroid.o \
 	lwgeom_ogc.o \
@@ -131,6 +132,8 @@ PG_OBJS= \
 	flatgeobuf.o \
 	lwgeom_in_flatgeobuf.o \
 	lwgeom_out_flatgeobuf.o \
+	lwgeom_remove_irrelevant_points_for_view.o \
+	lwgeom_remove_small_geometries.o \
 	postgis_legacy.o
 
 # Objects to build using PGXS
