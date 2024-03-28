@@ -49,7 +49,7 @@ void ptarray_remove_helper(POINTARRAY *points, GBOX *bounds, int minpoints) {
     int r, w=0;
     int vx, vy, vx1=0, vx2=0, vy1=0, vy2=0,vxall=0, vyall=0;
     bool sameX, sameY, insideX, insideY, inside, skip, clear;
-    
+
     double x, y;
     POINT4D point;
 
@@ -111,10 +111,10 @@ void ptarray_remove_helper(POINTARRAY *points, GBOX *bounds, int minpoints) {
 // a view specified by rectangular bounds.
 // 2D-(MULTI)POLYGONs and (MULTI)LINESTRINGs are evaluated, others keep untouched.
 // ===============================================================================
-PG_FUNCTION_INFO_V1(st_remove_irrelevant_points_for_view);
-Datum st_remove_irrelevant_points_for_view(PG_FUNCTION_ARGS) {
+PG_FUNCTION_INFO_V1(ST_RemoveIrrelevantPointsForView);
+Datum ST_RemoveIrrelevantPointsForView(PG_FUNCTION_ARGS) {
 
-    int i, j, iw, jw, old_points, new_points;
+    int i, j, iw, jw;
 
     // gserialized logic see for example in /postgis/lwgeom_functions_basic.c,
     // type definitions see /liblwgeom/liblwgeom.h(.in)
@@ -179,15 +179,10 @@ Datum st_remove_irrelevant_points_for_view(PG_FUNCTION_ARGS) {
 	    PG_RETURN_POINTER(serialized_in);
     }
 
-    old_points = 0;
-    new_points = 0;
-
     if (geom->type == LINETYPE) {
 
 		LWLINE* line = (LWLINE*)geom;
-		old_points += line->points->npoints;
 		ptarray_remove_helper(line->points, bbox, 2);
-		new_points += line->points->npoints;
     }
 
     if (geom->type == MULTILINETYPE) {
@@ -196,9 +191,7 @@ Datum st_remove_irrelevant_points_for_view(PG_FUNCTION_ARGS) {
 		iw = 0;
         for (i=0; i<mline->ngeoms; i++) {
 		    LWLINE* line = mline->geoms[i];
-		    old_points += line->points->npoints;
 		    ptarray_remove_helper(line->points, bbox, 2);
-		    new_points += line->points->npoints;
 
 		    if (line->points->npoints) {
 		    	// keep (reduced) line
@@ -217,9 +210,7 @@ Datum st_remove_irrelevant_points_for_view(PG_FUNCTION_ARGS) {
 		LWPOLY* polygon = (LWPOLY*)geom;
 		iw = 0;
 		for (i=0; i<polygon->nrings; i++) {
-		    old_points += polygon->rings[i]->npoints;
 		    ptarray_remove_helper(polygon->rings[i], bbox, 4);
-		    new_points += polygon->rings[i]->npoints;
 
 		    if (polygon->rings[i]->npoints) {
 		    	// keep (reduced) ring
@@ -252,9 +243,7 @@ Datum st_remove_irrelevant_points_for_view(PG_FUNCTION_ARGS) {
 		    LWPOLY* polygon = mpolygon->geoms[j];
 		    iw = 0;
 		    for (i=0; i<polygon->nrings; i++) {
-				old_points += polygon->rings[i]->npoints;
 				ptarray_remove_helper(polygon->rings[i], bbox, 4);
-				new_points += polygon->rings[i]->npoints;
 
 				if (polygon->rings[i]->npoints) {
 		    		// keep (reduced) ring
@@ -274,16 +263,16 @@ Datum st_remove_irrelevant_points_for_view(PG_FUNCTION_ARGS) {
 					    lwfree(polygon->rings[i]);
 					}
 			    }
-			    polygon->nrings = iw;
-
-			    if (iw) {
-					mpolygon->geoms[jw++] = polygon;
-			    }
-			    else {
-					// free and remove polygon from multipolygon
-					lwfree(polygon);
-		    	}
 			}
+		    polygon->nrings = iw;
+
+		    if (iw) {
+				mpolygon->geoms[jw++] = polygon;
+		    }
+		    else {
+				// free and remove polygon from multipolygon
+				lwfree(polygon);
+	    	}
 		}
 		mpolygon->ngeoms = jw;
     }

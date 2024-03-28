@@ -6988,19 +6988,23 @@ CREATE OR REPLACE FUNCTION ST_3DLineInterpolatePoint(geometry, float8)
 #include "postgis_spgist.sql.in"
 #include "postgis_letters.sql"
 
-CREATE OR REPLACE FUNCTION st_remove_irrelevant_points_for_view(geometry, box2d)
+
+-----------------------------------------------------------------------
+-- ST_RemoveIrrelevantPointsForView
+-----------------------------------------------------------------------
+-- Availability: 3.1.5
+CREATE OR REPLACE FUNCTION ST_RemoveIrrelevantPointsForView(geometry, box2d)
 RETURNS geometry
-AS 'MODULE_PATHNAME','st_remove_irrelevant_points_for_view'
+AS 'MODULE_PATHNAME','ST_RemoveIrrelevantPointsForView'
 LANGUAGE 'c' VOLATILE STRICT; 
 
-CREATE OR REPLACE FUNCTION st_remove_small_geometries(geometry, double precision, double precision)
+-----------------------------------------------------------------------
+-- ST_RemoveSmallParts
+-----------------------------------------------------------------------
+-- Availability: 3.1.5
+CREATE OR REPLACE FUNCTION ST_RemoveSmallParts(geometry, double precision, double precision)
 RETURNS geometry
-AS 'MODULE_PATHNAME','st_remove_small_geometries'
-LANGUAGE 'c' VOLATILE STRICT; 
-
-CREATE OR REPLACE FUNCTION st_remove_small_geometries(geometry, double precision)
-RETURNS geometry
-AS 'MODULE_PATHNAME','st_remove_small_geometries'
+AS 'MODULE_PATHNAME','ST_RemoveSmallParts'
 LANGUAGE 'c' VOLATILE STRICT; 
 
 COMMIT;
