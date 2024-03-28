@@ -899,6 +899,10 @@ fillFaceFields(LWT_ISO_FACE* face, HeapTuple row, TupleDesc rowdesc, int fields)
       face->mbr = NULL;
     }
   }
+  else
+  {
+      face->mbr = NULL;
+  }
 }
 
 /* return 0 on failure (null) 1 otherwise */
@@ -5069,7 +5073,6 @@ Datum TopoGeo_AddLinestring(PG_FUNCTION_ARGS)
   FACEEDGESSTATE *state;
   Datum result;
   LWT_ELEMID id;
-  bool skipFace = false;
 
   if (SRF_IS_FIRSTCALL())
   {
@@ -5132,18 +5135,9 @@ Datum TopoGeo_AddLinestring(PG_FUNCTION_ARGS)
       PG_RETURN_NULL();
     }
 
-    if ( PG_NARGS() > 3 ) {
-      skipFace = PG_GETARG_BOOL(3);
-    }
-
-    if ( skipFace ) {
-      POSTGIS_DEBUG(1, "Calling lwt_AddLineNoFace");
-      elems = lwt_AddLineNoFace(topo, ln, tol, &nelems);
-    } else {
-      POSTGIS_DEBUG(1, "Calling lwt_AddLine");
-      elems = lwt_AddLine(topo, ln, tol, &nelems);
-    }
-    POSTGIS_DEBUG(1, "lwt_AddLine* returned");
+    POSTGIS_DEBUG(1, "Calling lwt_AddLine");
+    elems = lwt_AddLine(topo, ln, tol, &nelems);
+    POSTGIS_DEBUG(1, "lwt_AddLine returned");
     lwgeom_free(lwgeom);
     PG_FREE_IF_COPY(geom, 1);
     lwt_FreeTopology(topo);
@@ -5623,4 +5617,60 @@ Datum RegisterMissingFaces(PG_FUNCTION_ARGS)
   SPI_finish();
 
   PG_RETURN_NULL();
+}
+
+/*  TopoGeo_LoadGeometry(atopology, geom, tolerance) */
+Datum TopoGeo_LoadGeometry(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(TopoGeo_LoadGeometry);
+Datum TopoGeo_LoadGeometry(PG_FUNCTION_ARGS)
+{
+  text* toponame_text;
+  char* toponame;
+  double tol;
+  GSERIALIZED *geom;
+  LWGEOM *lwgeom;
+  LWT_TOPOLOGY *topo;
+
+  toponame_text = PG_GETARG_TEXT_P(0);
+  toponame = text_to_cstring(toponame_text);
+  PG_FREE_IF_COPY(toponame_text, 0);
+
+  geom = PG_GETARG_GSERIALIZED_P(1);
+  lwgeom = lwgeom_from_gserialized(geom);
+
+  tol = PG_GETARG_FLOAT8(2);
+  if ( tol < 0 )
+  {
+    PG_FREE_IF_COPY(geom, 1);
+    lwpgerror("Tolerance must be >=0");
+    PG_RETURN_NULL();
+  }
+
+  if ( SPI_OK_CONNECT != SPI_connect() )
+  {
+    lwpgerror("Could not connect to SPI");
+    PG_RETURN_NULL();
+  }
+
+  topo = lwt_LoadTopology(be_iface, toponame);
+  pfree(toponame);
+  if ( ! topo )
+  {
+    /* should never reach this point, as lwerror would raise an exception */
+    SPI_finish();
+    PG_RETURN_NULL();
+  }
+
+  POSTGIS_DEBUG(1, "Calling lwt_LoadGeometry");
+  lwt_LoadGeometry(topo, lwgeom, tol);
+  POSTGIS_DEBUG(1, "lwt_LoadGeometry returned");
+  lwgeom_free(lwgeom);
+  PG_FREE_IF_COPY(geom, 1);
+  lwt_FreeTopology(topo);
+
+  POSTGIS_DEBUG(1, "TopoGeo_LoadGeometry calling SPI_finish");
+
+  SPI_finish();
+
+  PG_RETURN_VOID();
 }
